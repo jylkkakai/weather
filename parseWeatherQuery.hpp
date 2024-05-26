@@ -1,6 +1,10 @@
-#ifndef PARSEWEATHERQUERY_H
-#define PARSEWEATHERQUERY_H
-#include <iostream>
+#ifndef PARSEWEATHERQUERY_HPP
+#define PARSEWEATHERQUERY_HPP
+#include "weather.hpp"
+#include <string>
+// #include <curl/curl.h>
+// #include <iostream>
+// #include <pugixml.hpp>
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
                             void *userp);
@@ -11,5 +15,5 @@ std::string parseDateTime(std::string s);
 
 void getForecast();
 
-void getCurrentObservation();
-#endif // !PARSEWEATHERQUERY_H
+std::vector<Weather> getCurrentObservation();
+#endif // !PARSEWEATHERQUERY_HPP

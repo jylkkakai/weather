@@ -4,6 +4,7 @@
 #include <curl/curl.h>
 #include <iostream>
 // #include <pugixml.hpp>
+#include <unordered_map>
 #include <vector>
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
@@ -35,15 +36,22 @@ std::string parseDateTime(std::string s) {
   return d + "  " + t;
 }
 
-void parseXmlStr(std::string s) {
+std::vector<Weather> getWeatherFromXmlStr(std::string s) {
 
+  std::unordered_map<std::string, int> params = {
+      {"t2m", 1},
+      {"p_sea", 2},
+      {"ws_10min", 3},
+  };
   size_t pos = 0;
-
   size_t tLast = s.rfind("<BsWfs:Time>");
-  size_t tPos = 0;
+  size_t tPos = s.find("<BsWfs:Time>", pos);
+  // std::cout << tPos << " " << tLast << std::endl;
   size_t pNamePos = 0;
   size_t pValuePos = 0;
-  // size_t counter = 0;
+  std::string tPrev = s.substr(tPos + 12, 20);
+  Weather w;
+  std::vector<Weather> ws;
 
   while (tPos < tLast) {
     tPos = s.find("<BsWfs:Time>", pos) + 12;
@@ -54,11 +62,33 @@ void parseXmlStr(std::string s) {
         pNamePos, s.find("</BsWfs:ParameterName>", pNamePos) - pNamePos);
     std::string pValue = s.substr(
         pValuePos, s.find("</BsWfs:ParameterValue>", pValuePos) - pValuePos);
-    std::cout << t << " " << pName << " " << pValue << std::endl;
+
+    if (tPrev != t) {
+      w.dateTime = tPrev;
+      ws.push_back(w);
+      Weather wt;
+      w = wt;
+      tPrev = t;
+      // w.dateTime = tPrev;
+    }
+    switch (params[pName]) {
+    case 1: {
+      w.temp = pValue;
+      break;
+    }
+    case 2: {
+      w.pres = "Ilmanpaine: " + pValue + " hPa";
+      break;
+    }
+    case 3: {
+      w.windS = "Tuulen nopeus: " + pValue + " m/s";
+      break;
+    }
+    }
+    // std::cout << t << " " << pName << " " << pValue << std::endl;
     pos = pValuePos;
-    // counter++;
-    // std::cout << tLast << " " << tPos << std::endl;
   }
+  return ws;
 }
 
 void getForecast() {
@@ -87,17 +117,34 @@ void getForecast() {
   // }
 }
 
-void getCurrentObservation() {
+std::vector<Weather> getCurrentObservation() {
 
   std::vector<Weather> weatherPoints;
   std::string url =
       "http://opendata.fmi.fi/"
       "wfs?service=WFS&version=2.0.0&request=getFeature&storedquery_id=fmi::"
-      "observations::weather::simple&place=nokia&starttime=2024-05-"
-      "24T09:00:00Z&";
+      "observations::weather::simple&place=nokia&"
+      "starttime=2024-05-26T07:40:00Z&";
   std::string xmlStr = getXml(url);
   // std::cout << xmlStr << std::endl;
-  parseXmlStr(xmlStr);
+  weatherPoints = getWeatherFromXmlStr(xmlStr);
+  if (weatherPoints.empty()) {
+    std::cout << "Jokin meni vikaan. Säätietoja ei saatu." << std::endl;
+    exit(1);
+  }
+  return weatherPoints;
+  // for (auto point : weatherPoints) {
+  //
+  //   std::cout << "Aika: " << point.dateTime << std::endl;
+  //   std::cout << point.temp << std::endl;
+  //   std::cout << point.pres << std::endl;
+  //   std::cout << point.windS << std::endl;
+  // }
+  // Weather point = weatherPoints[weatherPoints.size() - 1];
+  // std::cout << "Aika: " << point.dateTime << std::endl;
+  // std::cout << point.temp << std::endl;
+  // std::cout << point.pres << std::endl;
+  // std::cout << point.windS << std::endl;
   // pugi::xml_document doc;
   // pugi::xml_parse_result result = doc.load_string(xmlStr.c_str());
   // pugi::xml_node root = doc.document_element();
